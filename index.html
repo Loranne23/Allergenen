@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lorannes Allergenen Scanner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+            background-color: #f9f9f9;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        button {
+            background-color: #9932fa;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 0;
+            width: 100%;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .upload-btn {
+            background-color: #28a745;
+        }
+        #preview {
+            max-width: 100%;
+            margin-top: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            display: none;
+            text-align: left;
+            white-space: pre-wrap;
+        }
+        .safe { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .loading { background-color: #fff3cd; color: #856704; text-align: center; }
+    </style>
+
+    <!-- We laden de gratis OCR-scanner in die in de browser zelf draait -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <h2>Allergenen Scanner</h2>
+    <p>Upload een duidelijke foto van de ingrediënten in alleen Nederlands of Engels.</p>
+    
+    <label for="imageLoader" class="upload-btn">
+        <button type="button" onclick="document.getElementById('imageLoader').click()">📷 Neem Foto / Upload Afbeelding</button>
+    </label>
+    <input type="file" id="imageLoader" accept="image/*">
+
+    <img id="preview" alt="Food label preview">
+    
+    <div id="result"></div>
+</div>
+
+<script>
+    const imageLoader = document.getElementById('imageLoader');
+    const preview = document.getElementById('preview');
+    const resultDiv = document.getElementById('result');
+
+    // Jouw specifieke allergenenprofiel
+    const ALLERGENEN = [
+        { naam: "Melk", trefwoorden: ["melk", "wei", "caseïn", "lactose", "boter", "room", "kaas", "melkpoeder", "curd", "milk", "whey", "butter"] },
+        { naam: "Soja", trefwoorden: ["soja", "soy", "sojaboon", "soybean"] },
+        { naam: "Avocado", trefwoorden: ["avocado"] },
+        { naam: "Oregano", trefwoorden: ["oregano"] },
+        { naam: "Kunstmatige Zoetstoffen", trefwoorden: ["sucralose", "asparta", "sacharine", "acesulfaam", "neotaam", "erythritol", "xylitol", "sorbitol", "maltitol"] }
+    ];
+
+    imageLoader.addEventListener('change', handleImage, false);
+
+    function handleImage(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            preview.src = event.target.result;
+            preview.style.display = 'block';
+            
+            resultDiv.className = 'loading';
+            resultDiv.style.display = 'block';
+            resultDiv.innerText = "Tekst van afbeelding aan het lezen (OCR)...";
+
+            analyzeLabel(file);
+        }
+        reader.readAsDataURL(file);
+    }
+
+    async function analyzeLabel(file) {
+        try {
+            // Tesseract leest de afbeelding rechtstreeks in de browser (werkt in het Nederlands en Engels)
+            const result = await Tesseract.recognize(file, 'nld+eng', {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        resultDiv.innerText = `Scannen: ${Math.round(m.progress * 100)}%`;
+                    }
+                }
+            });
+
+            const gevondenTekst = result.data.text.toLowerCase();
+            checkAllergenen(gevondenTekst);
+
+        } catch (error) {
+            resultDiv.className = 'danger';
+            resultDiv.innerText = "Fout bij het lokaal scannen van de afbeelding: " + error.message;
+            console.error(error);
+        }
+    }
+
+    function checkAllergenen(tekst) {
+        let gevondenAllergenen = [];
+
+        // 1. Maak de tekst schoon van leestekens, haakjes en komma's zodat "sojalecithine)," gewoon "sojalecithine" wordt
+        let opgeschoondeTekst = tekst
+            .replaceAll("(", " ")
+            .replaceAll(")", " ")
+            .replaceAll(",", " ")
+            .replaceAll(".", " ")
+            .replaceAll(":", " ")
+            .replaceAll(";", " ")
+            .replaceAll("\n", " "); // Vervang enters door spaties
+
+        // 2. JOUW UITGEBREIDE UITZONDERINGS-LIJST (Alles in kleine letters)
+        const veiligeWoorden = [
+            "sojalecithine", 
+            "sojalecitine", 
+            "soy lecithin", 
+            "melkvet", 
+            "milk fat",
+            "watervrij melkvet",
+            "milkfat",
+            "melkcomponenten", // Sluit de allergenen-waarschuwing uit
+            "milk components",
+            "milk solids",      // Engelse cacao-waarschuwing "cocoa solids" / "milk solids"
+            "butterfat"        // Engelse term voor botervet
+        ];
+        
+        // 3. Wis alle veilige varianten tijdelijk uit de tekst
+        veiligeWoorden.forEach(veiligWoord => {
+            // We zoeken naar het woord met spaties eromheen of als losstaand deel
+            opgeschoondeTekst = opgeschoondeTekst.replaceAll(veiligWoord, "[veilig]");
+        });
+
+        // 4. DE SCANNER LOGICA (Zoeken naar de echte boosdoeners)
+        ALLERGENEN.forEach(allergeen => {
+            // We controleren of een trefwoord los voorkomt in de opgeschoonde tekst
+            let triggers = allergeen.trefwoorden.filter(woord => {
+                // Door spaties rond het woord te checken voorkomen we dat "sojalecithine" (als dat er nog stond) als "soja" wordt gezien
+                return opgeschoondeTekst.split(" ").includes(woord);
+            });
+
+            if (triggers.length > 0) {
+                gevondenAllergenen.push(`${allergeen.naam} (omdat we vonden: "${triggers.join(', ')}")`);
+            }
+        });
+
+        // 5. Toon het resultaat op het scherm
+        if (gevondenAllergenen.length > 0) {
+            resultDiv.className = "danger";
+            resultDiv.innerText = "VERDICT: GEVAAR\n\nPas op! De volgende ingrediënten zijn ontdekt:\n• " + gevondenAllergenen.join("\n• ");
+        } else {
+            resultDiv.className = "safe";
+            resultDiv.innerText = "VERDICT: VEILIG\n\nGeen van Lorannes allergenen zijn direct teruggevonden op het label.";
+        }
+    }
+</script>
+
+</body>
+</html>
