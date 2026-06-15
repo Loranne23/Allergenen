@@ -208,8 +208,7 @@
     function checkAllergenen(tekst) {
         let gevondenAllergenen = [];
 
-        // 1. Maak de tekst schoon van leestekens, maar we laten de letters aan elkaar plakken!
-        // We halen streepjes nu juist WEG zodat "soja-eiwit" verandert in "sojaeiwit".
+        // 1. Maak de tekst schoon van leestekens, we laten letters aan elkaar plakken voor soja/melk
         let schoneTekst = tekst
             .replaceAll("-", "") 
             .replaceAll("(", " ")
@@ -220,8 +219,7 @@
             .replaceAll(";", " ")
             .replaceAll("\n", " ");
 
-        // 2. Jouw lijst met VEILIGE uitzonderingen.
-        // Als de scanner een van deze exacte woorden vindt, wist hij ze TIJDELIJK uit de tekst.
+        // 2. Jouw lijst met VEILIGE uitzonderingen voor melk en soja
         const veiligeWoorden = [
             "sojalecithine", "sojalecitine", "soy lecithin", 
             "melkvet", "milk fat", "watervrij melkvet", "milkfat",
@@ -232,16 +230,28 @@
             schoneTekst = schoneTekst.replaceAll(veiligWoord, "[veilig]");
         });
 
-        // 3. DE NIEUWE LOGICA (Jouw idee!)
-        // We zoeken nu simpelweg of je gevaarlijke trefwoorden *ergens* binnen een woord zitten (.includes)
+        // 3. DE SCANNER LOGICA
         ALLERGENEN.forEach(allergeen => {
-            let triggers = allergeen.trefwoorden.filter(woord => {
-                // Als "soja" of "melk" ERGENS in de tekst staat (bijv. in "sojaeiwit"), is het foute boel!
-                return schoneTekst.includes(woord);
-            });
-
-            if (triggers.length > 0) {
-                gevondenAllergenen.push(`${allergeen.naam} (omdat we vonden: "${triggers.join(', ')}")`);
+            
+            // SPECIAL CHECK VOOR UI: Omdat 'ui' in 'suiker' en 'zuivel' zit, moeten we hier extra voorzichtig zijn
+            if (allergeen.naam === "Ui") {
+                // We hakken de tekst in losse woorden om te kijken of het woord 'ui', 'uienpoeder' of 'onion' er ECHT los in staat
+                let triggers = allergeen.trefwoorden.filter(woord => {
+                    return schoneTekst.split(" ").includes(woord);
+                });
+                if (triggers.length > 0) {
+                    gevondenAllergenen.push(`${allergeen.naam} (omdat we vonden: "${triggers.join(', ')}")`);
+                }
+            } 
+            
+            // VOOR ALLE ANDERE ALLERGENEN: Blijven we jouw superveilige, brede zoekmethode gebruiken!
+            else {
+                let triggers = allergeen.trefwoorden.filter(woord => {
+                    return schoneTekst.includes(woord);
+                });
+                if (triggers.length > 0) {
+                    gevondenAllergenen.push(`${allergeen.naam} (omdat we vonden: "${triggers.join(', ')}")`);
+                }
             }
         });
 
