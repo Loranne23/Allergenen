@@ -27,11 +27,12 @@
             font-size: 16px;
             border-radius: 5px;
             cursor: pointer;
-            margin: 10px 0;
+            margin: 5px 0;
             width: 100%;
         }
-        .upload-btn { background-color: #28a745; }
-        .crop-btn { background-color: #ffc107; color: #212529; display: none; }
+        .camera-btn { background-color: #28a745; }
+        .file-btn { background-color: #6c757d; }
+        .crop-btn { background-color: #ffc107; color: #212529; display: none; margin-top: 10px; }
         
         /* Cropper container styling */
         .img-container {
@@ -66,10 +67,13 @@
 
 <div class="container">
     <h2>Allergenen Scanner</h2>
-    <p>Maak een foto van de ingrediënten, snijd hem bij en scan direct.</p>
+    <p>Maak een foto of kies een bestand, snijd de ingrediënten bij en scan direct.</p>
     
-    <button type="button" class="upload-btn" onclick="document.getElementById('cameraInput').click()">📷 Open Camera / Neem Foto</button>
+    <button type="button" class="camera-btn" onclick="document.getElementById('cameraInput').click()">📷 Open Camera</button>
     <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
+
+    <button type="button" class="file-btn" onclick="document.getElementById('fileInput').click()">📁 Kies uit Bestanden / Foto's</button>
+    <input type="file" id="fileInput" accept="image/*" style="display: none;">
 
     <div class="img-container">
         <img id="imageToCrop" src="">
@@ -82,6 +86,7 @@
 
 <script>
     const cameraInput = document.getElementById('cameraInput');
+    const fileInput = document.getElementById('fileInput');
     const imageToCrop = document.getElementById('imageToCrop');
     const cropButton = document.getElementById('cropButton');
     const resultDiv = document.getElementById('result');
@@ -89,7 +94,7 @@
     
     let cropper;
 
-    // Jouw specifieke allergenenprofiel
+    // Jouw specifieke allergenenprofiel (inclusief je aanpassingen)
     const ALLERGENEN = [
         { naam: "Melk", trefwoorden: ["melk", "wei", "caseïn", "lactose", "boter", "room", "kaas", "melkpoeder", "curd", "milk", "whey", "butter"] },
         { naam: "Soja", trefwoorden: ["soja", "soy", "lecithine", "sojaboon", "soybean"] },
@@ -100,13 +105,17 @@
         { naam: "Kunstmatige Zoetstoffen", trefwoorden: ["sucralose", "aspartaam", "aspartame", "sacharine", "acesulfaam", "neotaam", "erythritol", "xylitol", "sorbitol", "maltitol", "steviol", "stevia"] }
     ];
 
-    cameraInput.addEventListener('change', (e) => {
+    // Luister naar de camera knop
+    cameraInput.addEventListener('change', handleFileSelect);
+    // Luister naar de bestanden knop
+    fileInput.addEventListener('change', handleFileSelect);
+
+    function handleFileSelect(e) {
         const file = e.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
         reader.onload = function(event) {
-            // Vernietig een eventuele oude cropper-sessie
             if (cropper) { cropper.destroy(); }
             
             imageToCrop.src = event.target.result;
@@ -114,7 +123,6 @@
             cropButton.style.display = 'block';
             resultDiv.style.display = 'none';
 
-            // Start de fotocropper (vrij bewegen zonder vaste verhoudingen)
             cropper = new Cropper(imageToCrop, {
                 viewMode: 1,
                 autoCropArea: 1,
@@ -125,13 +133,11 @@
             });
         }
         reader.readAsDataURL(file);
-    });
+    }
 
-    // Zodra je op de "Uitsnijden & Scannen" knop drukt
     cropButton.addEventListener('click', () => {
         if (!cropper) return;
 
-        // Haal de uitgesneden afbeelding op in hoge kwaliteit
         const canvas = cropper.getCroppedCanvas({ maxWidth: 2048, maxHeight: 2048 });
         
         imgContainer.style.display = 'none';
@@ -140,7 +146,6 @@
         resultDiv.style.display = 'block';
         resultDiv.innerText = "Tekst uit je uitsnede aan het lezen (OCR)...";
 
-        // Zet het canvas om naar een bestand waar Tesseract mee kan werken
         canvas.toBlob((blob) => {
             analyzeLabel(blob);
         }, 'image/jpeg', 0.95);
@@ -168,7 +173,6 @@
     function checkAllergenen(tekst) {
         let gevondenAllergenen = [];
 
-        // 1. Maak de tekst helemaal schoon
         let opgeschoondeTekst = tekst
             .replaceAll("(", " ")
             .replaceAll(")", " ")
@@ -178,7 +182,6 @@
             .replaceAll(";", " ")
             .replaceAll("\n", " ");
 
-        // 2. Jouw veilige uitzonderingen
         const veiligeWoorden = [
             "sojalecithine", "sojalecitine", "soy lecithin", 
             "melkvet", "milk fat", "watervrij melkvet", "milkfat",
@@ -189,7 +192,6 @@
             opgeschoondeTekst = opgeschoondeTekst.replaceAll(veiligWoord, "[veilig]");
         });
 
-        // 3. Controleer op de echte allergenen
         ALLERGENEN.forEach(allergeen => {
             let triggers = allergeen.trefwoorden.filter(woord => {
                 return opgeschoondeTekst.split(" ").includes(woord);
@@ -200,13 +202,12 @@
             }
         });
 
-        // 4. Resultaat tonen
         if (gevondenAllergenen.length > 0) {
             resultDiv.className = "danger";
-            resultDiv.innerText = "VERDICT: GEVAAR\n\nPas op! De volgende ingrediënten zijn ontdekt:\n• " + gevondenAllergenen.join("\n• ");
+            resultDiv.innerText = "UITKOMST: GEVAAR\n\nPas op! De volgende ingrediënten zijn ontdekt:\n• " + gevondenAllergenen.join("\n• ");
         } else {
             resultDiv.className = "safe";
-            resultDiv.innerText = "VERDICT: VEILIG\n\nGeen van Lorannes allergenen zijn direct teruggevonden op het label.";
+            resultDiv.innerText = "UITKOMST: VEILIG\n\nGeen van Lorannes allergenen zijn direct teruggevonden op het label.";
         }
     }
 </script>
