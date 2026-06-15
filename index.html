@@ -221,9 +221,54 @@
 
         // 2. Jouw lijst met VEILIGE uitzonderingen voor melk en soja
         const veiligeWoorden = [
+            // Soja-uitzonderingen
             "sojalecithine", "sojalecitine", "soy lecithin", 
+            
+            // Melk/zuivel-uitzonderingen
             "melkvet", "milk fat", "watervrij melkvet", "milkfat",
-            "melkcomponenten", "milk components", "milk solids", "butterfat"
+            "butterfat",
+            
+            // Plantaardige melksoorten (Geen sojamelk, want soja is een allergeen!)
+            "havermelk", "oat milk",
+            "amandelmelk", "almond milk",
+            "kokosmelk", "coconut milk",
+            "rijstmelk", "rice milk",
+            "erwtenmelk", "pea milk",
+            "cashewmelk", "cashew milk",
+            "hazelnootmelk", "hazelnut milk",
+            "macadamiamelk", "macadamia milk",
+            "hennepmelk", "hemp milk",
+            "speltmelk", "spelt milk",
+
+            // Plantaardige room
+            "haverroom", "oat cream",
+            "kokosroom", "coconut cream",
+            "amandelroom", "almond cream",
+            "rijstroom", "rice cream",
+            
+            // Producten met 'boter' in de naam (geen zuivel)
+            "cacaoboter", "cocoa butter", "cacao boter",
+            "pindaboter", "peanut butter",
+            "amandelboter", "almond butter",
+            "cashewboter", "cashew butter",
+            "hazelnootboter", "hazelnut butter",
+            "pompoenpitboter", "pumpkin seed butter",
+            "zonnebloempitboter", "sunflower seed butter",
+            "sheaboter", "shea butter",
+            "appelboter", "apple butter",
+            "boterbonen", "butter beans",
+            "botersla", "butterhead lettuce",
+            "boterzuur", "butyric acid", // Veelgebruikt, veilig additief
+            
+            // Producten met 'kaas' of 'room' in de naam (geen zuivel)
+            "pindakaas",
+            "leverkaas", "hoofdkaas", "vleeskaas", // Vleeswaren
+            "kaasjeskruid", // Plant (mallow)
+            "roomse kervel", // Kruid
+            
+            // Woorden waar toevallig 'wei' in verstopt zit
+            "boekweit", "boekweitmeel", "buckwheat",
+            "weizen", "weizenbloem", "weizenmeel"
         ];
         
         veiligeWoorden.forEach(veiligWoord => {
