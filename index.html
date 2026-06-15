@@ -208,7 +208,10 @@
     function checkAllergenen(tekst) {
         let gevondenAllergenen = [];
 
-        let opgeschoondeTekst = tekst
+        // 1. Maak de tekst schoon van leestekens, maar we laten de letters aan elkaar plakken!
+        // We halen streepjes nu juist WEG zodat "soja-eiwit" verandert in "sojaeiwit".
+        let schoneTekst = tekst
+            .replaceAll("-", "") 
             .replaceAll("(", " ")
             .replaceAll(")", " ")
             .replaceAll(",", " ")
@@ -217,6 +220,8 @@
             .replaceAll(";", " ")
             .replaceAll("\n", " ");
 
+        // 2. Jouw lijst met VEILIGE uitzonderingen.
+        // Als de scanner een van deze exacte woorden vindt, wist hij ze TIJDELIJK uit de tekst.
         const veiligeWoorden = [
             "sojalecithine", "sojalecitine", "soy lecithin", 
             "melkvet", "milk fat", "watervrij melkvet", "milkfat",
@@ -224,12 +229,15 @@
         ];
         
         veiligeWoorden.forEach(veiligWoord => {
-            opgeschoondeTekst = opgeschoondeTekst.replaceAll(veiligWoord, "[veilig]");
+            schoneTekst = schoneTekst.replaceAll(veiligWoord, "[veilig]");
         });
 
+        // 3. DE NIEUWE LOGICA (Jouw idee!)
+        // We zoeken nu simpelweg of je gevaarlijke trefwoorden *ergens* binnen een woord zitten (.includes)
         ALLERGENEN.forEach(allergeen => {
-            let triggers = allergeen.trefwoorden.filter(word => {
-                return opgeschoondeTekst.split(" ").includes(word);
+            let triggers = allergeen.trefwoorden.filter(woord => {
+                // Als "soja" of "melk" ERGENS in de tekst staat (bijv. in "sojaeiwit"), is het foute boel!
+                return schoneTekst.includes(woord);
             });
 
             if (triggers.length > 0) {
@@ -237,6 +245,7 @@
             }
         });
 
+        // 4. Resultaat tonen
         if (gevondenAllergenen.length > 0) {
             resultDiv.className = "danger";
             resultDiv.innerText = "UITKOMST: GEVAAR\n\nPas op! De volgende ingrediënten zijn ontdekt:\n• " + gevondenAllergenen.join("\n• ");
